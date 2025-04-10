@@ -39,4 +39,3 @@ export const adminRoute = (req, res, next) => {
 		return res.status(403).json({ message: "Access denied - Admin only" });
 	}
 };
-lib
