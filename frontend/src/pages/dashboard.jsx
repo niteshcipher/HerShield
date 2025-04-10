@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconRetina from "leaflet/dist/images/marker-icon-2x.png";
 import shadow from "leaflet/dist/images/marker-shadow.png";
+import "leaflet-routing-machine";
 
 const socket = io("http://localhost:5000");
 
@@ -104,9 +105,17 @@ export default function Dashboard() {
       );
 
       if (confirmHelp) {
-        alert("You chose to help. Tracking...");
-        // TODO: Show route to user using Leaflet routing or polyline
+        alert("You chose to help. Routing to the location...");
+      
+        L.Routing.control({
+          waypoints: [
+            L.latLng(myLocation.latitude, myLocation.longitude),
+            L.latLng(latitude, longitude),
+          ],
+          routeWhileDragging: false,
+        }).addTo(mapInstance);
       }
+      
     });
 
     return () => {
