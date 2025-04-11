@@ -9,12 +9,12 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.route.js";
+import { geminiRoutes } from "./routes/geminiRoutes.js";
 import { connectDB } from "./lib/db.js";
 
 // Setup __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 
 dotenv.config();
 
@@ -28,6 +28,7 @@ app.use(cookieParser());
 
 // API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/gemini", geminiRoutes); // Add geminiRoutes middleware
 
 // HTTP + Socket setup
 const server = http.createServer(app);
@@ -54,7 +55,7 @@ io.on("connection", (socket) => {
   // 🚨 SOS Alert: one user triggers, all others get notified
   socket.on("sos-alert", ({ latitude, longitude }) => {
     console.log(`SOS triggered by ${socket.id} at [${latitude}, ${longitude}]`);
-  
+
     // Send to everyone except sender
     socket.broadcast.emit("incoming-sos", {
       from: socket.id,
@@ -62,7 +63,6 @@ io.on("connection", (socket) => {
       longitude,
     });
   });
-  
 
   // 🔌 User disconnect
   socket.on("disconnect", () => {
@@ -80,7 +80,6 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-// Start server
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
