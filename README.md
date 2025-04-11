@@ -1,6 +1,6 @@
-🔒 HackMOL - Women's Safety Emergency Response System
+🔒 HerShield - Women's Safety Emergency Response System
 🚨 Overview
-HackMOL is a real-time women safety application built to provide immediate support in emergency situations. In the face of danger, the victim can press an SOS button from the app. This triggers a chain of responses:
+HerShield is a real-time women safety application built to provide immediate support in emergency situations. In the face of danger, the victim can press an SOS button from the app. This triggers a chain of responses:
 
 Sends the victim's live location and a live video stream link.
 
