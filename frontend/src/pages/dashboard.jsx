@@ -8,6 +8,7 @@ import shadow from "leaflet/dist/images/marker-shadow.png";
 import "leaflet-routing-machine";
 import axios from "axios";
 
+// Create socket connection outside the component to avoid reconnections on re-renders
 const socket = io("http://localhost:5000");
 
 export default function Dashboard() {
@@ -23,16 +24,28 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const chatMessagesRef = useRef(null);
 
+  // Jitsi state
+  const [jitsiLink, setJitsiLink] = useState('');
+  const [showJitsiModal, setShowJitsiModal] = useState(false);
+  const [incomingCalls, setIncomingCalls] = useState([]);
+
+  // Debugging - log when jitsiLink changes
+  useEffect(() => {
+    if (jitsiLink) {
+      console.log("Jitsi link updated:", jitsiLink);
+    }
+  }, [jitsiLink]);
+
   // Map setup
   useEffect(() => {
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: iconRetina,
-      iconUrl: icon,
-      shadowUrl: shadow,
-    });
+    if (mapRef.current && !mapRef.current._leaflet_id) {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: iconRetina,
+        iconUrl: icon,
+        shadowUrl: shadow,
+      });
 
-    if (!mapRef.current._leaflet_id) {
       const map = L.map(mapRef.current);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; OpenStreetMap contributors',
@@ -105,8 +118,21 @@ export default function Dashboard() {
       }
     });
 
-    socket.on("incoming-sos", ({ from, latitude, longitude }) => {
-      if (myLocation?.latitude === latitude && myLocation?.longitude === longitude) return;
+    // Fixed incoming SOS handler
+    socket.on("incoming-sos", (data) => {
+      console.log("Received incoming SOS:", data);
+      const { from, latitude, longitude, jitsiLink } = data;
+      
+      // Skip if the SOS is from myself
+      if (myLocation && 
+          myLocation.latitude === latitude && 
+          myLocation.longitude === longitude) {
+        console.log("Ignoring SOS from myself");
+        return;
+      }
+
+      // Add to incoming calls
+      setIncomingCalls(prev => [...prev, { from, latitude, longitude, jitsiLink }]);
 
       const confirmHelp = window.confirm(
         `🚨 Someone nearby needs help at (${latitude.toFixed(4)}, ${longitude.toFixed(4)}). Will you help?`
@@ -114,7 +140,7 @@ export default function Dashboard() {
 
       if (confirmHelp) {
         alert("You chose to help. Routing to the location...");
-      
+
         L.Routing.control({
           waypoints: [
             L.latLng(myLocation.latitude, myLocation.longitude),
@@ -122,6 +148,17 @@ export default function Dashboard() {
           ],
           routeWhileDragging: false,
         }).addTo(mapInstance);
+
+        // Log the received link
+        console.log("Opening Jitsi link:", jitsiLink);
+        
+        // If there's a Jitsi link, show the modal
+        if (jitsiLink) {
+          setJitsiLink(jitsiLink);
+          setShowJitsiModal(true);
+        } else {
+          console.error("No Jitsi link received with SOS");
+        }
       }
     });
 
@@ -142,11 +179,22 @@ export default function Dashboard() {
 
   const sendSOS = () => {
     if (myLocation) {
+      // Generate a unique Jitsi Meet link
+      const roomId = 'sos-' + Math.random().toString(36).substring(2, 15);
+      const meetLink = `https://meet.jit.si/${roomId}`;
+    
+
+      setJitsiLink(meetLink);
+
+      // Emit SOS alert with the Jitsi link
       socket.emit("sos-alert", {
         latitude: myLocation.latitude,
         longitude: myLocation.longitude,
+        jitsiLink: meetLink,
       });
-      alert("🚨 SOS sent to nearby users!");
+
+      setShowJitsiModal(true);
+      alert("🚨 SOS sent to nearby users with video call option!");
     }
   };
 
@@ -263,6 +311,73 @@ export default function Dashboard() {
                 Send
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Jitsi Meet Modal */}
+        {showJitsiModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-4 rounded-lg shadow-xl max-w-md w-full">
+              <h2 className="text-xl font-bold mb-2">Emergency Video Call</h2>
+              <p className="mb-3">Use this link to communicate via video:</p>
+              <div className="bg-gray-100 p-2 rounded mb-3 break-all">
+                <p className="text-blue-600 text-sm">{jitsiLink}</p>
+              </div>
+              <div className="flex space-x-2 flex-wrap gap-2">
+                <button
+                  onClick={() => window.open(jitsiLink, '_blank')}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex-grow"
+                >
+                  Join Video Call
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(jitsiLink);
+                    alert('Video call link copied to clipboard!');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                >
+                  Copy Link
+                </button>
+                <button
+                  onClick={() => setShowJitsiModal(false)}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Incoming Calls Panel */}
+        {incomingCalls.length > 0 && (
+          <div className="absolute top-5 right-5 bg-white p-3 rounded-lg shadow-lg z-20 max-w-xs">
+            <h3 className="font-bold text-red-600 mb-2">Recent SOS Calls</h3>
+            <ul className="space-y-2">
+              {incomingCalls.map((call, index) => (
+                <li key={index} className="border-b pb-2">
+                  <p className="text-sm">SOS from location: ({call.latitude.toFixed(4)}, {call.longitude.toFixed(4)})</p>
+                  {call.jitsiLink && (
+                    <button 
+                      onClick={() => {
+                        setJitsiLink(call.jitsiLink);
+                        setShowJitsiModal(true);
+                      }}
+                      className="mt-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
+                    >
+                      Join Video Call
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button 
+              onClick={() => setIncomingCalls([])}
+              className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+            >
+              Clear All
+            </button>
           </div>
         )}
       </div>

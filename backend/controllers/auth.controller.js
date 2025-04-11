@@ -34,7 +34,7 @@ const setCookies = (res, accessToken, refreshToken) => {
 };
 
 export const signup = async (req, res) => {
-	const { email, password, name } = req.body;
+	const { email,aadhar, password, name } = req.body;
 	try {
 		const userExists = await User.findOne({ email });
 
@@ -53,7 +53,7 @@ export const signup = async (req, res) => {
 			_id: user._id,
 			name: user.name,
 			email: user.email,
-			role: user.role,
+			aadhar: user.aadhar,
 		});
 	} catch (error) {
 		console.log("Error in signup controller", error.message);

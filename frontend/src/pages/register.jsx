@@ -6,11 +6,12 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const [aadhar, setAadhar] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
+    if (!name||!aadhar || !email || !password) {
       alert('Please fill all fields');
       return;
     }
@@ -18,6 +19,7 @@ const Register = () => {
     try {
       const res = await axios.post('/auth/signup', {
         name,
+        aadhar,
         email,
         password,
       });
@@ -43,6 +45,14 @@ const Register = () => {
             onChange={(e) => setName(e.target.value)}
             className="w-full p-3 rounded-lg bg-[#3a3a4f] border border-[#444] text-gray-200 placeholder-gray-400"
           />
+
+          <input
+            type="aadhar"
+            placeholder="Aadhar Number"
+            value={aadhar}
+            onChange={(e) => setAadhar(e.target.value)}
+            className="w-full p-3 rounded-lg bg-[#3a3a4f] border border-[#444] text-gray-200 placeholder-gray-400"
+          />    
 
           <input
             type="email"

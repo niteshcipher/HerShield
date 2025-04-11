@@ -7,6 +7,14 @@ const userSchema = new mongoose.Schema(
 			type: String,
 			required: [true, "Name is required"],
 		},
+		aadhar: {
+			type: Number,
+			required: [true, "Aadhar is required"],
+			unique: true,
+			lowercase: true,
+			minlength: [12, "Password must be exact 12 characters long"],
+			trim: true,
+		},
 		email: {
 			type: String,
 			required: [true, "Email is required"],
